@@ -36,10 +36,28 @@ def read_msa_fasta():
                     pdb_align_dict[rec.id[:-4]].append(res_cpt + read_pdb_starts()[rec.id[:-4]])
     return pdb_align_dict
 
+def read_msa_fasta_gaps():
+    """
+    Reads msa from MUSTANG in webnma3. It conserves the nan and puts them in the returned dictionary.
+    :return:
+    """
+    pdb_align_dict = {'4kvm_chainsBE': [], '4kvx_chainB': []}
+    file_path = os.path.join(".", "alignment_webnma3.afasta")
+    records = al.read(open(file_path), "fasta")
+    tlist = list(zip(*records))
+    for i in range(0, records.get_alignment_length()):
+        for rec in records:
+                ls = [i for i, e in enumerate(rec.seq)]
+                if not rec.seq[i] == "-":
+                    res_cpt = ls.index(i)
+                    pdb_align_dict[rec.id[:-4]].append(res_cpt + read_pdb_starts()[rec.id[:-4]])
+                else:
+                    pdb_align_dict[rec.id[:-4]].append(np.nan)
+    return pdb_align_dict
 
 # Global variables (Ugly)
 ca_align_list = []
-ca_align_dict = read_msa_fasta()
+ca_align_dict = read_msa_fasta_gaps()
 
 if __name__ == '__main__':
 
@@ -48,30 +66,43 @@ if __name__ == '__main__':
     fluct_list_B = []
     train = pd.DataFrame(columns=['resid', 'fluct_score_BE', 'fluct_score_B'])
 
-    with open('alignment_fluctuations.txt', 'r') as f1:
+    with open('alignment_fluctuations_webnma3.txt', 'r') as f1:
         for line in f1.readlines():
             if not line.startswith("index") and not line.startswith("\n"):
                 resid = int(line.split("\t")[0].strip())
                 if resid in ca_align_dict["4kvm_chainsBE"]:
                     resid_list.append(resid)
-                    fluct_list_BE.append(float(line.split("\t")[1].strip().replace(",", ".")))
-                    fluct_list_B.append(float(line.split("\t")[2].strip().replace(",", ".")))
+                    fluct_list_B.append(float(line.split("\t")[1].strip().replace(",", ".")))
+                    fluct_list_BE.append(float(line.split("\t")[2].strip().replace(",", ".")))
 
 
     train['resid'] = resid_list
     train['fluct_score_BE'] = fluct_list_BE
     train['fluct_score_B'] = fluct_list_B
 
+    # Truncate the dataframe from when fluct_score_B starts
+    train = train.truncate(before=train['fluct_score_B'].first_valid_index())
+
     # min max normalization
-    column_names_to_normalize = ['fluct_score_BE', 'fluct_score_B']
+    column_names_to_normalize = ['fluct_score_B', 'fluct_score_BE']
     x = train[column_names_to_normalize].values
     min_max_scaler = preprocessing.MinMaxScaler()
     x_scaled = min_max_scaler.fit_transform(x)
     df_temp = pd.DataFrame(x_scaled, columns=column_names_to_normalize, index=train.index)
     train[column_names_to_normalize] = df_temp
+
     # train = (train - train.min()) / (train.max() - train.min())
 
-    sns.lineplot("resid", "fluct_score_BE", label="4kvm_chainsBE", data=train)
-    sns.lineplot("resid", "fluct_score_B", label="4kvx_chainsB", data=train)
+    # sns.lineplot("resid", "fluct_score_BE", label="4kvm_chainsBE", data=train)
+    # sns.lineplot("resid", "fluct_score_B", label="4kvx_chainsB", data=train)
+    # plt.show()
+
+    # Detect changes in alignment on chain B
+    # train['C'] = train['fluct_score_B'].diff()
+
+    ax = plt.gca()
+
+    train.plot(kind='line', x='resid', y='fluct_score_BE', ax=ax)
+    train.plot(kind='line', x='resid', y='fluct_score_B', color='red', ax=ax)
 
     plt.show()
