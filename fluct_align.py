@@ -74,19 +74,23 @@ if __name__ == '__main__':
         for line in f1.readlines():
             if not line.startswith("index") and not line.startswith("\n"):
                 resid = int(line.split("\t")[0].strip())
-                if resid in ca_align_dict["4kvm_chainsBE"]:
-                    resid_list.append(resid)
+                # if resid in ca_align_dict["4kvx_chainB"]:
+                resid_list.append(resid)
+                if math.isnan(ca_align_dict["4kvx_chainB"][resid - 1]):
+                    fluct_list_B.insert(resid, math.nan)
+                else:
                     fluct_list_B.append(float(line.split("\t")[1].strip().replace(",", ".")))
-                    fluct_list_BE.append(float(line.split("\t")[2].strip().replace(",", ".")))
+                fluct_list_BE.append(float(line.split("\t")[2].strip().replace(",", ".")))
 
     with open('4kvm_chainsBE_modesv2_fluct.dat', 'r') as f1:
         for line in f1.readlines():
             resid = int(line.split("\t")[0].strip())
             if not line.startswith("index") and not line.startswith("\n"):
-                if math.isnan(ca_align_dict["4kvm_chainsBE"][718 + resid - 1]):
-                    fluct_list_BEB.insert(718 + resid - 1, math.nan)
-                else:
-                    fluct_list_BEB.append(float(line.split("\t")[1].strip().replace(",", ".")))
+                # if resid in ca_align_dict["4kvm_chainsBE"]:
+                # if math.isnan(ca_align_dict["4kvm_chainsBE"][718 + resid - 1]):
+                #     # fluct_list_BEB.insert(718 + resid - 1, math.nan)
+                # else:
+                fluct_list_BEB.append(float(line.split("\t")[1].strip().replace(",", ".")))
 
     train['resid'] = resid_list
     train['fluct_score_BE'] = fluct_list_BE
